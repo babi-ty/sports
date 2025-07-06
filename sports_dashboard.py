@@ -268,7 +268,7 @@ def create_medal_tally_chart(df):
         orientation='h',
         title='Tournament-wise Medal Tally',
         color='Count',
-        color_continuous_scale='browns'
+        color_continuous_scale='brwnyl'
     )
     
     fig.update_layout(
@@ -589,7 +589,7 @@ def main():
             y='Medals',
             title='Medals by Sport',
             color='Medals',
-            color_continuous_scale='browns'
+            color_continuous_scale='brwnyl'
         )
         
         fig.update_layout(
