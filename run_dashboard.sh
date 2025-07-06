@@ -6,17 +6,15 @@ echo "🏆 Starting Sports Medals Dashboard..."
 # Add local bin to PATH
 export PATH=$PATH:/home/ubuntu/.local/bin
 
-# Check if required CSV files exist
-if [ ! -f "22-23 csv.csv" ] || [ ! -f "23-24 csv.csv" ] || [ ! -f "24-25 csv.csv" ]; then
-    echo "❌ Error: Required CSV files not found!"
-    echo "Please ensure the following files are in the current directory:"
-    echo "  - 22-23 csv.csv"
-    echo "  - 23-24 csv.csv" 
-    echo "  - 24-25 csv.csv"
+# Check if required Excel file exists
+if [ ! -f "main data sheet cleaned.xlsx" ]; then
+    echo "❌ Error: Required Excel file not found!"
+    echo "Please ensure the following file is in the current directory:"
+    echo "  - main data sheet cleaned.xlsx"
     exit 1
 fi
 
-echo "✅ CSV files found"
+echo "✅ Excel file found"
 
 # Check if streamlit is available
 if ! command -v streamlit &> /dev/null; then
