@@ -132,35 +132,34 @@ def load_data():
         # Load Excel file
         df = pd.read_excel('main data sheet cleaned.xlsx')
         
-        # Clean column names
-        df.columns = df.columns.str.strip()
-        
-        # Check if required columns exist and handle different naming patterns
-        achievement_col = None
-        for col in df.columns:
-            if 'achievement' in col.lower():
-                achievement_col = col
-                break
-        
-        if achievement_col is None:
-            st.error("Could not find achievement column in the data")
-            return pd.DataFrame()
-        
-        # Standardize achievement values
-        df['Achievement'] = df[achievement_col].astype(str).str.strip()
-        df['Achievement'] = df['Achievement'].replace({
-            'Gold': 'Gold',
-            'Silver': 'Silver', 
-            'Bronze': 'Bronze',
-            'Participated': 'Participated'
-        })
-        
-        # Create medal type column
-        df['Medal_Type'] = df['Achievement'].apply(lambda x: 
-            'Gold' if str(x).lower() == 'gold' else
-            'Silver' if str(x).lower() == 'silver' else
-            'Bronze' if str(x).lower() == 'bronze' else
-            'Other')
+       # Clean column names
+df.columns = df.columns.str.strip()
+
+# Directly reference the known column name after stripping
+achievement_col = "Select the Achievement"
+if achievement_col not in df.columns:
+    st.error(f"Column '{achievement_col}' not found in the data")
+    return pd.DataFrame()
+
+# Standardize achievement values
+df['Achievement'] = df[achievement_col].astype(str).str.strip().str.title()
+
+# Map known values to standardized labels
+df['Achievement'] = df['Achievement'].replace({
+    'Gold': 'Gold',
+    'Silver': 'Silver',
+    'Bronze': 'Bronze',
+    'Participated': 'Participated'
+    '5th Position': '5th Position'
+    '7th Position': '7th Position'
+})
+
+        #Create medal type column
+        df['Medal_Type'] = df['Achievement'].str.lower().map({
+            'gold': 'Gold',
+            'silver': 'Silver',
+            'bronze': 'Bronze'
+        }).fillna('Participated')
         
         # Handle gender column - look for variations
         gender_col = None
@@ -170,33 +169,38 @@ def load_data():
                 break
         
         if gender_col:
-            df['Gender'] = df[gender_col].astype(str).str.strip()
+            df['Gender'] = df[gender_col].astype(str).str.strip().str.lower()
+                        # Map 'boy' → 'Male', 'girl' → 'Female'
+             df['Gender'] = df['Gender'].replace({
+                 'boy': 'Male',
+                 'girl': 'Female',
+                 'male': 'Male',
+                 'female': 'Female'
+             })
+             df['Gender'] = df['Gender'].where(df['Gender'].isin(['Male', 'Female']), 'Unknown')
         else:
             df['Gender'] = 'Unknown'
         
         # Handle institute names - look for variations
-        institute_col = None
-        for col in df.columns:
-            if 'institute' in col.lower() or 'school' in col.lower():
-                institute_col = col
-                break
-        
-        if institute_col:
-            df['Institute'] = df[institute_col].astype(str).str.strip()
-        else:
-            df['Institute'] = 'Unknown'
+            df.columns = df.columns.str.strip()
+
+              # Use the known column name
+            institute_col = "Institute Name"
+
+            if institute_col in df.columns:
+                 df['Institute'] = df[institute_col].astype(str).str.strip()
+            else:
+                 df['Institute'] = 'Unknown'
         
         # Handle player names - look for variations
-        player_col = None
-        for col in df.columns:
-            if 'player' in col.lower() or 'name' in col.lower():
-                player_col = col
-                break
-        
-        if player_col:
-            df['Player_Name'] = df[player_col].astype(str).str.strip()
-        else:
-            df['Player_Name'] = 'Unknown'
+           df.columns = df.columns.str.strip()
+
+           if "Player Name or Team Name" in df.columns:
+                 df = df.rename(columns={"Player Name or Team Name": "Player/Team_Name"})
+                 df['Player/Team_Name'] = df['Player/Team_Name'].astype(str).str.strip()
+           else:
+                 df['Player/Team_Name'] = 'Unknown'
+
         
         # Handle sports - look for variations
         sport_col = None
@@ -245,18 +249,21 @@ def load_data():
         if year_col:
             df['YEAR'] = df[year_col].astype(str).str.strip()
         else:
-            df['YEAR'] = '2022-2023'  # Default year
+            df['YEAR'] = '2024-2025'  # Default year
         
         # Remove rows with missing essential data
-        df = df.dropna(subset=['Player_Name', 'Achievement'])
-        df = df[df['Player_Name'] != 'Unknown']
-        df = df[df['Achievement'] != 'nan']
-        
+        # Clean string fields
+            df['Player_Name'] = df['Player_Name'].astype(str).str.strip()
+            df['Achievement'] = df['Achievement'].astype(str).str.strip()
+      # Remove rows with missing essential data
+            df = df.dropna(subset=['Player_Name', 'Achievement'])
+            df = df[df['Player_Name'].str.lower() != 'unknown']
+            df = df[~df['Achievement'].str.lower().eq('nan')]
         return df
     except Exception as e:
         st.error(f"Error loading data: {str(e)}")
         return pd.DataFrame()
-
+#EDITED AND CHECKED TILL HERE (EXCEPT HTML PART) - AYUSH
 def create_medal_tally_chart(df):
     """Create tournament-wise medal tally bar chart"""
     medal_counts = df[df['Medal_Type'].isin(['Gold', 'Silver', 'Bronze'])].groupby('Tournament_Level').size().reset_index(name='Count')
