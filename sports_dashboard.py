@@ -122,6 +122,25 @@ st.markdown("""
         background-color: #A0522D;
         color: #F5DEB3;
     }
+    
+    @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@800&display=swap');
+
+    .kpi-title {
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 800;
+        font-size: 32px;
+        color: #2F2F2F;
+        text-align: center;
+        margin-bottom: -10px;
+    }
+
+    .kpi-sub {
+        font-family: 'Montserrat', sans-serif;
+        font-weight: 500;
+        font-size: 16px;
+        text-align: center;
+        color: #4F4F4F;
+    }
 </style>
 """, unsafe_allow_html=True)
 
@@ -132,27 +151,27 @@ def load_data():
         # Load Excel file
         df = pd.read_excel('main data sheet cleaned.xlsx')
         
-       # Clean column names
-df.columns = df.columns.str.strip()
+        # Clean column names
+        df.columns = df.columns.str.strip()
 
-# Directly reference the known column name after stripping
-achievement_col = "Select the Achievement"
-if achievement_col not in df.columns:
-    st.error(f"Column '{achievement_col}' not found in the data")
-    return pd.DataFrame()
+        # Directly reference the known column name after stripping
+        achievement_col = "Select the Achievement"
+        if achievement_col not in df.columns:
+            st.error(f"Column '{achievement_col}' not found in the data")
+            return pd.DataFrame()
 
-# Standardize achievement values
-df['Achievement'] = df[achievement_col].astype(str).str.strip().str.title()
+        # Standardize achievement values
+        df['Achievement'] = df[achievement_col].astype(str).str.strip().str.title()
 
-# Map known values to standardized labels
-df['Achievement'] = df['Achievement'].replace({
-    'Gold': 'Gold',
-    'Silver': 'Silver',
-    'Bronze': 'Bronze',
-    'Participated': 'Participated'
-    '5th Position': '5th Position'
-    '7th Position': '7th Position'
-})
+        # Map known values to standardized labels
+        df['Achievement'] = df['Achievement'].replace({
+            'Gold': 'Gold',
+            'Silver': 'Silver',
+            'Bronze': 'Bronze',
+            'Participated': 'Participated',
+            '5th Position': '5th Position',
+            '7th Position': '7th Position'
+        })
 
         #Create medal type column
         df['Medal_Type'] = df['Achievement'].str.lower().map({
@@ -170,38 +189,37 @@ df['Achievement'] = df['Achievement'].replace({
         
         if gender_col:
             df['Gender'] = df[gender_col].astype(str).str.strip().str.lower()
-                        # Map 'boy' → 'Male', 'girl' → 'Female'
-             df['Gender'] = df['Gender'].replace({
-                 'boy': 'Male',
-                 'girl': 'Female',
-                 'male': 'Male',
-                 'female': 'Female'
-             })
-             df['Gender'] = df['Gender'].where(df['Gender'].isin(['Male', 'Female']), 'Unknown')
+            # Map 'boy' → 'Male', 'girl' → 'Female'
+            df['Gender'] = df['Gender'].replace({
+                'boy': 'Male',
+                'girl': 'Female',
+                'male': 'Male',
+                'female': 'Female'
+            })
+            df['Gender'] = df['Gender'].where(df['Gender'].isin(['Male', 'Female']), 'Unknown')
         else:
             df['Gender'] = 'Unknown'
         
         # Handle institute names - look for variations
-            df.columns = df.columns.str.strip()
+        df.columns = df.columns.str.strip()
 
-              # Use the known column name
-            institute_col = "Institute Name"
+        # Use the known column name
+        institute_col = "Institute Name"
 
-            if institute_col in df.columns:
-                 df['Institute'] = df[institute_col].astype(str).str.strip()
-            else:
-                 df['Institute'] = 'Unknown'
+        if institute_col in df.columns:
+            df['Institute'] = df[institute_col].astype(str).str.strip()
+        else:
+            df['Institute'] = 'Unknown'
         
         # Handle player names - look for variations
-           df.columns = df.columns.str.strip()
+        df.columns = df.columns.str.strip()
 
-           if "Player Name or Team Name" in df.columns:
-                 df = df.rename(columns={"Player Name or Team Name": "Player/Team_Name"})
-                 df['Player/Team_Name'] = df['Player/Team_Name'].astype(str).str.strip()
-           else:
-                 df['Player/Team_Name'] = 'Unknown'
+        if "Player Name or Team Name" in df.columns:
+            df = df.rename(columns={"Player Name or Team Name": "Player/Team_Name"})
+            df['Player/Team_Name'] = df['Player/Team_Name'].astype(str).str.strip()
+        else:
+            df['Player/Team_Name'] = 'Unknown'
 
-        
         # Handle sports - look for variations
         sport_col = None
         for col in df.columns:
@@ -251,96 +269,186 @@ df['Achievement'] = df['Achievement'].replace({
         else:
             df['YEAR'] = '2024-2025'  # Default year
         
-        # Remove rows with missing essential data
         # Clean string fields
-            df['Player_Name'] = df['Player_Name'].astype(str).str.strip()
-            df['Achievement'] = df['Achievement'].astype(str).str.strip()
-      # Remove rows with missing essential data
-            df = df.dropna(subset=['Player_Name', 'Achievement'])
-            df = df[df['Player_Name'].str.lower() != 'unknown']
-            df = df[~df['Achievement'].str.lower().eq('nan')]
+        df['Player/Team_Name'] = df['Player/Team_Name'].astype(str).str.strip()
+        df['Achievement'] = df['Achievement'].astype(str).str.strip()
+        
+        # Remove rows with missing essential data
+        df = df.dropna(subset=['Player/Team_Name', 'Achievement'])
+        df = df[df['Player/Team_Name'].str.lower() != 'unknown']
+        df = df[~df['Achievement'].str.lower().eq('nan')]
+        
         return df
     except Exception as e:
         st.error(f"Error loading data: {str(e)}")
         return pd.DataFrame()
+
 #EDITED AND CHECKED TILL HERE (EXCEPT HTML PART) - AYUSH
+import random
+
 def create_medal_tally_chart(df):
-    """Create tournament-wise medal tally bar chart"""
-    medal_counts = df[df['Medal_Type'].isin(['Gold', 'Silver', 'Bronze'])].groupby('Tournament_Level').size().reset_index(name='Count')
+    """Create year-wise medal tally bar chart grouped by medal type"""
     
+    # Step 1: Count medals grouped by year and medal type
+    medal_counts = df[df['Medal_Type'].isin(['Gold', 'Silver', 'Bronze'])].groupby(['YEAR', 'Medal_Type']).size().reset_index(name='Count')
+    
+    # Step 2: Choose pastel background
+    pastel_backgrounds = ['#D7C3A8']
+    chosen_bg = random.choice(pastel_backgrounds)
+    
+    # Step 3: Create grouped bar chart
     fig = px.bar(
-        medal_counts, 
-        x='Count', 
-        y='Tournament_Level',
-        orientation='h',
-        title='Tournament-wise Medal Tally',
-        color='Count',
-        color_continuous_scale='brwnyl'
+        medal_counts,
+        x='YEAR',
+        y='Count',
+        color='Medal_Type',
+        barmode='group',
+        title='Year-wise Medal Tally by Type',
+        color_discrete_map={
+            'Gold': '#FFBF00',
+            'Silver': '#C0C0C0',
+            'Bronze': '#CD7F32'
+        }
     )
     
+    # Step 4: Style the chart
     fig.update_layout(
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='#8B4513'),
-        title_font=dict(size=16, color='#8B4513'),
-        height=300
+        paper_bgcolor=chosen_bg,
+        plot_bgcolor=chosen_bg,
+        title_text='<b>Year-wise Medal Tally by Type',
+        title_x=0.5,
+        title_xanchor='center',
+        title_font=dict(size=16, color='#A0665F', family='Arial'),
+        font=dict(color='#A0665F'),
+        legend=dict(
+            orientation="h",
+            x=0.5,
+            xanchor='center',
+            y=1.1,
+            font=dict(size=12, color='#A0665F', family='Arial')
+        ),
+        height=400
     )
     
     return fig
 
 def create_medal_share_chart(df):
     """Create medal share pie chart"""
+
+    # Count each medal type
     medal_counts = df[df['Medal_Type'].isin(['Gold', 'Silver', 'Bronze'])]['Medal_Type'].value_counts()
-    
-    colors = ['#DAA520', '#C0C0C0', '#CD7F32']  # Gold, Silver, Bronze colors
-    
+    # Define colors for Gold, Silver, Bronze in order
+    colors = ['#FFBF00', '#C0C0C0', '#CD7F32']  # Gold, Silver, Bronze
+
+    # Create pie chart
     fig = px.pie(
         values=medal_counts.values,
         names=medal_counts.index,
-        title='Medal Share',
+        title='<b>Medal Share</b>',
         color_discrete_sequence=colors
     )
-    
+
+    # Add thicker border around each pie slice
+    fig.update_traces(marker=dict(line=dict(color='white', width=2)))
+
+    # Style layout
     fig.update_layout(
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='#8B4513'),
-        title_font=dict(size=16, color='#8B4513'),
+        paper_bgcolor='#79655C',
+        plot_bgcolor='#928173',
+        font=dict(color='#D7C3A8'),
+        title_text='<b>Medal Share</b>',
+        title_x=0.5,  # Center title
+        title_xanchor='center',
+        title_font=dict(size=20, color='#FFFBF0'),  # Bigger and brighter title
         height=300
     )
-    
+
     return fig
 
 def create_win_rate_chart(df):
-    """Create win rate trend chart"""
-    # Calculate win rate by year
-    yearly_stats = df.groupby('YEAR').agg({
+    """KPI card showing Win Rate, Wins & Participation (current year)"""
+
+    # Clean data
+    df = df.dropna(subset=['YEAR'])
+    df['YEAR'] = df['YEAR'].astype(str)
+
+    # Group and calculate win rate
+    stats = df.groupby('YEAR').agg({
         'Medal_Type': lambda x: sum(x.isin(['Gold', 'Silver', 'Bronze'])),
-        'Player_Name': 'count'
+        'Player/Team_Name': 'count'
     }).reset_index()
-    
-    yearly_stats['Win_Rate'] = (yearly_stats['Medal_Type'] / yearly_stats['Player_Name']) * 100
-    
-    fig = px.line(
-        yearly_stats,
-        x='YEAR',
-        y='Win_Rate',
-        title='Win Rate Trend',
-        markers=True
+    stats['Win_Rate'] = (stats['Medal_Type'] / stats['Player/Team_Name']) * 100
+    stats = stats.sort_values('YEAR')
+
+    # Get current and previous year stats
+    current_year = stats['YEAR'].iloc[-1]
+    current_rate = stats['Win_Rate'].iloc[-1]
+    current_wins = stats['Medal_Type'].iloc[-1]
+    current_participants = stats['Player/Team_Name'].iloc[-1]
+    prev_rate = stats['Win_Rate'].iloc[-2] if len(stats) > 1 else current_rate
+    delta = current_rate - prev_rate
+
+    # Plotly KPI figure
+    fig = go.Figure(go.Indicator(
+        mode="number+delta",
+        value=current_rate,
+        number={
+            'suffix': "%",
+            'font': {
+                'size': 64,
+                'color': '#2F2F2F',
+                'family': "Montserrat"
+            }
+        },
+        delta={
+            'reference': prev_rate,
+            'valueformat': '.2f',
+            'increasing': {'color': 'green'},
+            'decreasing': {'color': 'red'},
+            'relative': False,
+            'font': {'size': 20}
+        },
+        title={
+            'text': f"<b>Win Rate</b><br><span style='font-size:16px;color:#4F4F4F'>Year: {current_year}</span>",
+            'font': {'size': 22, 'color': '#4F4F4F'}
+        },
+        domain={'x': [0, 1], 'y': [0.3, 1]}  # Leave space at the bottom
+    ))
+
+    # Add bottom-left: Total Wins
+    fig.add_annotation(
+        text=f"<b>Total Wins:</b> {current_wins}",
+        x=0.01,
+        y=0.1,
+        showarrow=False,
+        font=dict(size=14, color='#333'),
+        xanchor='left',
+        yanchor='bottom'
     )
-    
-    fig.update_traces(line=dict(color='#8B4513', width=3))
+
+    # Add bottom-right: Total Participants
+    fig.add_annotation(
+        text=f"<b>Total Participants:</b> {current_participants}",
+        x=0.99,
+        y=0.1,
+        showarrow=False,
+        font=dict(size=14, color='#333'),
+        xanchor='right',
+        yanchor='bottom'
+    )
+
+    # Layout
     fig.update_layout(
-        paper_bgcolor='rgba(0,0,0,0)',
-        plot_bgcolor='rgba(0,0,0,0)',
-        font=dict(color='#8B4513'),
-        title_font=dict(size=16, color='#8B4513'),
-        height=300,
-        xaxis=dict(gridcolor='#DEB887'),
-        yaxis=dict(gridcolor='#DEB887')
+        height=320,
+        width=450,
+        paper_bgcolor='#F9F9F9',
+        plot_bgcolor='#F9F9F9',
+        margin=dict(l=20, r=20, t=20, b=20)
     )
-    
+
     return fig
+
+#checked and changed till here - ayush
 
 def main():
     # Load data
@@ -395,12 +503,12 @@ def main():
         st.markdown(f'''
         <div class="metric-card">
             <div class="metric-value">{total_medals}</div>
-            <div class="metric-label">Total</div>
+            <div class="metric-label">Total Medals</div>
         </div>
         ''', unsafe_allow_html=True)
     
     with col2:
-        total_players = filtered_df['Player_Name'].nunique()
+        total_players = filtered_df['Player/Team_Name'].nunique()
         st.markdown(f'''
         <div class="metric-card">
             <div class="metric-value">{total_players}</div>
@@ -446,7 +554,7 @@ def main():
         with col1:
             # Institute-wise table
             institute_stats = filtered_df.groupby('Institute').agg({
-                'Player_Name': 'nunique',
+                'Player/Team_Name': 'nunique',
                 'Medal_Type': lambda x: sum(x.isin(['Gold', 'Silver', 'Bronze'])),
                 'Gender': lambda x: ', '.join(x.unique())[:20] + '...' if len(', '.join(x.unique())) > 20 else ', '.join(x.unique()),
                 'Tournament Name': 'nunique'
@@ -475,7 +583,7 @@ def main():
                     player_info = selected_players.iloc[0]
                     st.markdown(f'''
                     <div class="player-card">
-                        <div class="player-name">{player_info['Player_Name']}</div>
+                        <div class="player-name">{player_info['Player/Team_Name']}</div>
                         <div class="player-details">
                             <strong>Institute:</strong> {player_info['Institute']}<br>
                             <strong>Gender:</strong> {player_info['Gender']}<br>
@@ -493,7 +601,7 @@ def main():
         
         with col1:
             # Player-wise table
-            player_stats = filtered_df.groupby('Player_Name').agg({
+            player_stats = filtered_df.groupby('Player/Team_Name').agg({
                 'Institute': 'first',
                 'Gender': 'first',
                 'Medal_Type': lambda x: sum(x.isin(['Gold', 'Silver', 'Bronze'])),
@@ -518,7 +626,7 @@ def main():
             # Player details panel
             if not player_stats.empty:
                 selected_player_name = player_stats.iloc[0]['Player Name']
-                selected_player_data = filtered_df[filtered_df['Player_Name'] == selected_player_name]
+                selected_player_data = filtered_df[filtered_df['Player/Team_Name'] == selected_player_name]
                 
                 if not selected_player_data.empty:
                     player_info = selected_player_data.iloc[0]
@@ -526,7 +634,7 @@ def main():
                     
                     st.markdown(f'''
                     <div class="player-card">
-                        <div class="player-name">{player_info['Player_Name']}</div>
+                        <div class="player-name">{player_info['Player/Team_Name']}</div>
                         <div class="player-details">
                             <strong>Institute:</strong> {player_info['Institute']}<br>
                             <strong>Gender:</strong> {player_info['Gender']}<br>
@@ -542,7 +650,7 @@ def main():
         
         # Gender-wise statistics
         gender_stats = filtered_df.groupby('Gender').agg({
-            'Player_Name': 'nunique',
+            'Player/Team_Name': 'nunique',
             'Medal_Type': lambda x: sum(x.isin(['Gold', 'Silver', 'Bronze'])),
             'Tournament Name': 'nunique'
         }).reset_index()
@@ -581,7 +689,7 @@ def main():
         
         # Event-wise statistics
         event_stats = filtered_df.groupby('Sport').agg({
-            'Player_Name': 'nunique',
+            'Player/Team_Name': 'nunique',
             'Medal_Type': lambda x: sum(x.isin(['Gold', 'Silver', 'Bronze'])),
             'Tournament Name': 'nunique'
         }).reset_index()
@@ -614,7 +722,7 @@ def main():
         
         # Year-wise statistics
         year_stats = filtered_df.groupby('YEAR').agg({
-            'Player_Name': 'nunique',
+            'Player/Team_Name': 'nunique',
             'Medal_Type': lambda x: sum(x.isin(['Gold', 'Silver', 'Bronze'])),
             'Tournament Name': 'nunique'
         }).reset_index()
@@ -656,35 +764,4 @@ def main():
             st.download_button(
                 label="Download CSV",
                 data=csv,
-                file_name=f"sports_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                mime="text/csv"
-            )
-    
-    with col2:
-        if st.button("📋 Download Summary"):
-            summary = f"""
-            Sports Dashboard Summary
-            =======================
-            
-            Total Records: {len(filtered_df)}
-            Total Players: {filtered_df['Player_Name'].nunique()}
-            Total Medals: {len(filtered_df[filtered_df['Medal_Type'].isin(['Gold', 'Silver', 'Bronze'])])}
-            Total Events: {filtered_df['Tournament Name'].nunique()}
-            
-            Medal Distribution:
-            - Gold: {len(filtered_df[filtered_df['Medal_Type'] == 'Gold'])}
-            - Silver: {len(filtered_df[filtered_df['Medal_Type'] == 'Silver'])}
-            - Bronze: {len(filtered_df[filtered_df['Medal_Type'] == 'Bronze'])}
-            
-            Top Performing Institute: {filtered_df.groupby('Institute')['Medal_Type'].apply(lambda x: sum(x.isin(['Gold', 'Silver', 'Bronze']))).idxmax()}
-            """
-            
-            st.download_button(
-                label="Download Summary",
-                data=summary,
-                file_name=f"sports_summary_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt",
-                mime="text/plain"
-            )
-
-if __name__ == "__main__":
-    main()
+                file_name=f"sports_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv
