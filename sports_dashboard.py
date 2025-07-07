@@ -764,4 +764,4 @@ def main():
             st.download_button(
                 label="Download CSV",
                 data=csv,
-                file_name=f"sports_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv
+                file_name=f"sports_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv"
